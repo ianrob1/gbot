@@ -139,6 +139,18 @@ def pick_tweet(tweets, posted_hashes):
 
 
 def create_client():
+    # Debug: Check if env vars are being used (don't log actual secrets)
+    using_env_vars = (
+        os.getenv("TWITTER_API_KEY") is not None or
+        os.getenv("TWITTER_API_SECRET") is not None or
+        os.getenv("TWITTER_ACCESS_TOKEN") is not None or
+        os.getenv("TWITTER_ACCESS_TOKEN_SECRET") is not None
+    )
+    if using_env_vars:
+        print("Using environment variables for Twitter API credentials")
+    else:
+        print("WARNING: Using hardcoded fallback credentials (env vars not set)")
+    
     return tweepy.Client(
         consumer_key=API_KEY,
         consumer_secret=API_SECRET,
@@ -222,6 +234,11 @@ def main():
             mark_posted(tweet)
         except tweepy.TooManyRequests:
             print("ERROR: Rate limited (429). Try again later.")
+        except tweepy.Unauthorized as e:
+            print("ERROR: 401 Unauthorized - Twitter API credentials are invalid or expired.")
+            print("Please verify your API keys in Render environment variables.")
+            print("Also check that your Twitter app has 'Read and Write' permissions enabled.")
+            print(f"Full error: {e}")
         except tweepy.TweepyException as e:
             print("ERROR posting tweet:", e)
 
