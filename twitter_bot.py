@@ -208,6 +208,16 @@ def main():
         sys.exit(1)
 
     client = create_client()
+    
+    # Verify which account we're posting to
+    try:
+        me = client.get_me(user_fields=["username", "name"])
+        if me and me.data:
+            print(f"Posting as: @{me.data.username} ({me.data.name})")
+        else:
+            print("WARNING: Could not verify account details")
+    except Exception as e:
+        print(f"WARNING: Could not verify account: {e}")
 
     try:
         tweets = load_tweets()
@@ -229,7 +239,22 @@ def main():
 
         try:
             resp = client.create_tweet(text=tweet)
-            print("Tweet posted. ID:", resp.data.get("id"))
+            tweet_id = resp.data.get("id")
+            tweet_url = f"https://twitter.com/i/web/status/{tweet_id}"
+            print("Tweet posted. ID:", tweet_id)
+            print("Tweet URL:", tweet_url)
+            
+            # Verify the tweet was actually created by fetching it back
+            try:
+                verify_resp = client.get_tweet(tweet_id, tweet_fields=["created_at", "public_metrics"])
+                if verify_resp.data:
+                    print("✓ Tweet verified - it exists on Twitter")
+                    print(f"  Created at: {verify_resp.data.created_at}")
+                else:
+                    print("⚠ WARNING: Tweet ID returned but verification failed")
+            except Exception as verify_err:
+                print(f"⚠ WARNING: Could not verify tweet: {verify_err}")
+            
             # Only mark as posted if the tweet was successfully created
             mark_posted(tweet)
         except tweepy.TooManyRequests:
